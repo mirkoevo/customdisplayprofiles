@@ -1,6 +1,6 @@
 # customdisplayprofiles
 
-This is a simple command-line Python script that can check, set or unset a custom ColorSync ICC profile for a given display. It uses PyObjC and the most current (as of 2013) ColorSync API to do this.
+This is a simple command-line Python script that can check, set or unset a custom ColorSync ICC profile for a given display. It uses PyObjC and the most current (as of 2022) ColorSync API to do this.
 
 ## Usage
 

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/local/bin/python3
 #
 # customdisplayprofiles
 #
@@ -7,58 +7,15 @@
 #
 # Copyright 2013 Timothy Sutton
 
-from __future__ import print_function
-
 import os
 import objc
 import Foundation
 import Quartz
+import ColorSync
 import optparse
 import sys
 
 from pprint import pprint
-
-# - below is bridge metadata of we need of the ColorSync framework
-# - last two arguments of ColorSyncProfileVerify have additional
-#   type_modifier metadata for 'out'-type arguments so that they
-#   can be passed by reference, though this currently does not seem
-#   to function correctly
-objc.parseBridgeSupport("""<?xml version='1.0'?>
-<!DOCTYPE signatures SYSTEM "file://localhost/System/Library/DTDs/BridgeSupport.dtd">
-<signatures version='1.0'>
-    <cftype name='ColorSyncProfileRef' type='^{ColorSyncProfile=}' tollfree='__NSCFType' gettypeid_func='ColorSyncProfileGetTypeID'/>
-    <constant name='kColorSyncDeviceDefaultProfileID' type='^{__CFString=}'/>
-    <constant name='kColorSyncDisplayDeviceClass' type='^{__CFString=}'/>
-    <constant name='kColorSyncProfile' type='^{__CFString=}'/>
-    <constant name='kColorSyncProfileUserScope' type='^{__CFString=}'/>
-    <function name='CGDisplayCreateUUIDFromDisplayID'>
-    <arg type='I'/>
-    <retval already_retained='true' type='^{__CFUUID=}'/>
-    </function>
-    <function name='ColorSyncDeviceCopyDeviceInfo'>
-    <arg type='^{__CFString=}'/>
-    <arg type='^{__CFUUID=}'/>
-    <retval already_retained='true' type='^{__CFDictionary=}'/>
-    </function>
-    <function name='ColorSyncDeviceSetCustomProfiles'>
-    <arg type='^{__CFString=}'/>
-    <arg type='^{__CFUUID=}'/>
-    <arg type='^{__CFDictionary=}'/>
-    <retval type='B'/>
-    </function>
-    <function name='ColorSyncProfileCreateWithURL'>
-    <arg type='^{__CFURL=}'/>
-    <arg type='^^{_CFError}' type_modifier='o'/>
-    <retval already_retained='true' type='^{ColorSyncProfile=}'/>
-    </function>
-    <function name='ColorSyncProfileVerify'>
-    <arg type='^{ColorSyncProfile=}'/>
-    <arg type='^^{_CFError}' type_modifier='o'/>
-    <arg type='^^{_CFError}' type_modifier='o'/>
-    <retval type='B'/>
-    </function>
-</signatures>
-""", globals(), '/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/ColorSync.framework')
 
 
 def errorExit(msg, code=1):
@@ -68,8 +25,8 @@ def errorExit(msg, code=1):
 
 def verify_profile(profile_url):
     # objc still doesn't seem to know about the CFErrorRefs below
-    profile, create_err = ColorSyncProfileCreateWithURL(profile_url, None)
-    usable, errors, warnings = ColorSyncProfileVerify(profile, None, None)
+    profile, create_err = ColorSync.ColorSyncProfileCreateWithURL(profile_url, None)
+    usable, errors, warnings = ColorSync.ColorSyncProfileVerify(profile, None, None)
 
     if errors:
         print >> sys.stderr, "Errors verifying profile:"
@@ -170,8 +127,8 @@ Available actions:
         display = {}
         display['id'] = display_id
         display['human_id'] = index + 1
-        display['device_info'] = ColorSyncDeviceCopyDeviceInfo(
-            kColorSyncDisplayDeviceClass, CGDisplayCreateUUIDFromDisplayID(display_id))
+        display['device_info'] = ColorSync.ColorSyncDeviceCopyDeviceInfo(
+            ColorSync.kColorSyncDisplayDeviceClass, ColorSync.CGDisplayCreateUUIDFromDisplayID(display_id))
         displays.append(display)
 
     target_display = displays[opts.display - 1]
@@ -194,7 +151,7 @@ Available actions:
         else:
             if len(args) < 2:
                 errorExit("The 'set' action requires a path to an ICC profile as an argument.")
-            profile_path = args[1]
+            profile_path = args[1].encode('utf-8')
             if not os.path.exists(profile_path):
                 sys.exit("Can't locate profile at path %s!" % profile_path)
             if os.path.isdir(profile_path):
@@ -207,11 +164,11 @@ Available actions:
         # info on config dict required:
         # /System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/ColorSync.framework/Versions/A/Headers/ColorSyncDevice.h
         # http://web.archiveorange.com/archive/print/YwdQZYJTswvvG79VTuyD
-        new_profile_dict = { kColorSyncDeviceDefaultProfileID: profile_url,
-                             kColorSyncProfileUserScope: user_scope }
+        new_profile_dict = { ColorSync.kColorSyncDeviceDefaultProfileID: profile_url,
+                             ColorSync.kColorSyncProfileUserScope: user_scope }
 
-        success = ColorSyncDeviceSetCustomProfiles(
-                    kColorSyncDisplayDeviceClass,
+        success = ColorSync.ColorSyncDeviceSetCustomProfiles(
+                    ColorSync.kColorSyncDisplayDeviceClass,
                     target_display['device_info']['DeviceID'],
                     new_profile_dict)
         if not success:
